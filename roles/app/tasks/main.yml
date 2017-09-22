@@ -1,0 +1,94 @@
+---
+- name: Launch EC2 instance
+  ec2:
+    keypair: "{{ keypair }}"
+    group: "{{ security_group }}"
+    instance_type: "{{ instance_type }}"
+    image: "{{ image }}"
+    wait: true
+    count: 1
+    region: "{{ region }}"
+  register: ec2
+  tags:
+    - launch_ec2
+
+- name: Wait for SSH to come up
+  wait_for:
+    host: "{{ item.public_ip }}"
+    port: 22
+    delay: 60
+    timeout: 320
+    state: started
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - launch_ec2
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: yes
+  become_method: sudo
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - update_cache
+
+- name: Update all packages to the latest version
+  apt:
+    upgrade: dist
+    force: yes
+  become: yes
+  become_method: sudo
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - update_cache
+
+- name: Get node.js debian package
+  command: bash -c "curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -"
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - install_node
+
+- name: Install node.js globally
+  command: bash -c "sudo apt-get install -y nodejs"
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - install_node
+
+- name: Copy application files to the server
+  copy:
+    src: roles/app/files
+    dest: /home/ubuntu
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - copy_files
+
+- name: Install modules in package.json file
+  npm:
+    path: /home/ubuntu/files
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - install_modules
+
+- name: Install "forever" node.js package globally
+  command: bash -c "sudo npm install forever -g"
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - install_modules
+
+- name: Start application
+  command: bash -c "forever start server.js"
+  args:
+    chdir: "/home/ubuntu/files"
+  delegate_to: "{{ item.public_ip }}"
+  with_items: "{{ ec2.instances }}"
+  tags:
+    - start_app
+
+

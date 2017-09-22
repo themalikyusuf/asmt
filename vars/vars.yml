@@ -1,0 +1,7 @@
+aws_access_key: AWS_ACCESS_KEY
+aws_secret_key: AWS_SECRET_KEY
+region: EC2-REGION
+keypair: EC2-KEYPAIR
+instance_type: EC2-INSTANCE-TYPE
+security_group: SECURITY-GROUP
+image: AMI-ID

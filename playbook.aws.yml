@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  user: ubuntu
+  connection: local
+  vars_files:
+  - "vars/vars.yml"
+  roles:
+  - setup
+  - app
